@@ -51,27 +51,40 @@ class ViewController: UIViewController {
     @IBAction func createProduct() {
         
         let url = "http://localhost:8080/products"
-        let params = CreateProduct(name: "EEE", price: 134)
-        let headers: HTTPHeaders = [
-            "Authorization": "Bearer \(self.token)",
-            "Accept": "application/json"
-        ]
         
-        AF.request(url, method: .post, parameters: params, encoder: JSONParameterEncoder.default, headers: headers).validate().responseJSON { response
-            in
+        let semaphore = DispatchSemaphore(value: 0)
+        let dispatchQueue = DispatchQueue.global(qos: .background)
+        
+        dispatchQueue.async {
             
-            switch response.result {
+            self.genToken { _ in
+                print("Finished get token")
+                semaphore.signal()
+            }
+            semaphore.wait()
             
-            case .success(let value):
-                print("Value: \(value)")
+            let params = CreateProduct(name: "EEE", price: 134)
+            let headers: HTTPHeaders = [
+                "Authorization": "Bearer \(self.token)",
+                "Accept": "application/json"
+            ]
             
-            case.failure(let error):
-                print("error: \(error)")
+            AF.request(url, method: .post, parameters: params, encoder: JSONParameterEncoder.default, headers: headers).validate().responseJSON { response
+                in
+                
+                switch response.result {
+                
+                case .success(let value):
+                    print("Value: \(value)")
+                
+                case.failure(let error):
+                    print("error: \(error)")
+                }
             }
         }
     }
     
-    @IBAction func genToken() {
+    func genToken(completionHandler: @escaping (String) -> Void) {
         
         let url = "http://localhost:8080/auth"
         let params = Login(username: "test1@", password: "123456")
@@ -88,6 +101,7 @@ class ViewController: UIViewController {
             case.failure(let error):
                 print("error: \(error)")
             }
+            completionHandler(self.token)
         }
     }
 }
